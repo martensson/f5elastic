@@ -1,0 +1,20 @@
+# listening address
+address = "0.0.0.0"
+# listening port
+port = "514"
+# Nodes in your cluster
+nodes = [ "http://test01:9200", "http://test02:9200", "http://test03:9200" ]
+# Index name
+index = "f5-today"
+# Number of concurrent workers
+workers = 20
+# Bulk size for indexing.
+bulk = 250
+# Buffer size. The amount of documents we keep in memory for our workers to handle.
+buffer = 10000
+# Timeout in seconds to force index flush if bulk size is not met
+timeout = 5
+# Geoip2/GeoLite2 database
+geoip = "GeoLite2-City.mmdb"
+# host to forward your requests (optional and still experimental)
+forward = ""

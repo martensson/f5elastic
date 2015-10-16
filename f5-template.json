@@ -1,0 +1,89 @@
+{
+    "mappings": {
+        "request": {
+            "_ttl": {
+                "default": 1209600000,
+                "enabled": false
+            },
+            "properties": {
+                "city": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "client": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "content-length": {
+                    "doc_values": true,
+                    "type": "integer"
+                },
+                "country": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "host": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "location": {
+                    "doc_values": true,
+                    "type": "geo_point"
+                },
+                "method": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "node": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "pool": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "referer": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "status": {
+                    "doc_values": true,
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "doc_values": true,
+                    "format": "dateOptionalTime",
+                    "type": "date"
+                },
+                "uri": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "user-agent": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                },
+                "virtual": {
+                    "doc_values": true,
+                    "index": "not_analyzed",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "settings": {
+        "number_of_replicas": "1",
+        "number_of_shards": "3"
+    },
+	"template" : "f5*"
+}
