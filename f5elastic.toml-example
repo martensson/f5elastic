@@ -16,5 +16,3 @@ buffer = 10000
 timeout = 5
 # Geoip2/GeoLite2 database
 geoip = "GeoLite2-City.mmdb"
-# host to forward your requests (optional and still experimental)
-forward = ""

@@ -1,9 +1,8 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
@@ -50,26 +49,55 @@ type Config struct {
 	Buffer  int
 	Timeout int
 	Geoip   string
-	Forward string
 }
 
 type Worker struct {
-	ID      int
 	Work    chan string
 	Indexer *elastic.BulkService
-	Fcon    net.Conn
 	Geodb   *geoip2.Reader
 }
 
-func NewWorker(id int, work chan string, indexer *elastic.BulkService, fcon net.Conn, geodb *geoip2.Reader) Worker {
+func NewWorker(work chan string, indexer *elastic.BulkService, geodb *geoip2.Reader) Worker {
 	// Create, and return the worker.
-	worker := Worker{
-		ID:      id,
+	return Worker{
 		Work:    work,
 		Indexer: indexer,
-		Fcon:    fcon,
 		Geodb:   geodb}
-	return worker
+}
+
+func (w Worker) NewRequest(msg string) (Request, error) {
+	msgparts := strings.Split(msg, " || ")
+	var request Request
+	if len(msgparts) != 11 {
+		err := errors.New("Error parsing message:\n" + msg)
+		return request, err
+	}
+	request.Client = msgparts[0]
+	request.Method = msgparts[1]
+	request.Host = msgparts[2]
+	request.Uri = msgparts[3]
+	if s, err := strconv.Atoi(msgparts[4]); err == nil {
+		request.Status = s
+	}
+	if s, err := strconv.Atoi(msgparts[5]); err == nil {
+		request.Contentlength = s
+	}
+	request.Referer = msgparts[6]
+	request.Useragent = msgparts[7]
+	request.Node = msgparts[8]
+	request.Pool = path.Base(msgparts[9])
+	request.Virtual = path.Base(msgparts[10])
+	ip := net.ParseIP(request.Client)
+	geo, err := w.Geodb.City(ip)
+	if err != nil {
+		log.Printf("Error parsing client ip %s: %s\n", request.Client, err)
+	} else {
+		request.City = geo.City.Names["en"]
+		request.Country = geo.Country.Names["en"]
+		request.Location = strconv.FormatFloat(geo.Location.Latitude, 'f', 6, 64) + "," + strconv.FormatFloat(geo.Location.Longitude, 'f', 6, 64)
+	}
+	request.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
+	return request, nil
 }
 
 func (w Worker) Start() {
@@ -87,37 +115,11 @@ func (w Worker) Start() {
 					w.Indexer.Do()
 					return
 				}
-				var request Request
-				msgparts := strings.Split(m, " || ")
-				if len(msgparts) != 11 {
-					log.Printf("Error parsing message:\n%s", m)
+				request, err := w.NewRequest(m)
+				if err != nil {
+					log.Println(err)
 					continue
 				}
-				request.Client = msgparts[0]
-				request.Method = msgparts[1]
-				request.Host = msgparts[2]
-				request.Uri = msgparts[3]
-				if s, err := strconv.Atoi(msgparts[4]); err == nil {
-					request.Status = s
-				}
-				if s, err := strconv.Atoi(msgparts[5]); err == nil {
-					request.Contentlength = s
-				}
-				request.Referer = msgparts[6]
-				request.Useragent = msgparts[7]
-				request.Node = msgparts[8]
-				request.Pool = path.Base(msgparts[9])
-				request.Virtual = path.Base(msgparts[10])
-				ip := net.ParseIP(request.Client)
-				geo, err := w.Geodb.City(ip)
-				if err != nil {
-					log.Printf("Error parsing client ip %s: %s\n", request.Client, err)
-				} else {
-					request.City = geo.City.Names["en"]
-					request.Country = geo.Country.Names["en"]
-					request.Location = strconv.FormatFloat(geo.Location.Latitude, 'f', 6, 64) + "," + strconv.FormatFloat(geo.Location.Longitude, 'f', 6, 64)
-				}
-				request.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index).Type("request").Id("").Doc(request)
 				w.Indexer = w.Indexer.Add(reqIndex)
 				// should be enough for now, but we can increase load by creating a group of workers
@@ -125,14 +127,6 @@ func (w Worker) Start() {
 					w.Indexer.Do()
 					// reset timer
 					timer = time.After(time.Second * time.Duration(config.Timeout))
-				}
-				if config.Forward != "" {
-					rawJson, _ := json.Marshal(request)
-					_, err := w.Fcon.Write(rawJson)
-					if err != nil {
-						log.Println(err)
-						continue
-					}
 				}
 			}
 		}
@@ -177,19 +171,12 @@ func main() {
 		log.Fatal(err)
 	}
 	defer geodb.Close()
-	var fcon net.Conn
-	if config.Forward != "" {
-		fcon, err = net.Dial("udp", config.Forward)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 	// A buffered channel that we can send work requests on.
 	var workqueue = make(chan string, config.Buffer)
 	// lets start our desired workers.
 	for i := 0; i < config.Workers; i++ {
 		indexer := c.Bulk()
-		worker := NewWorker(i+1, workqueue, indexer, fcon, geodb)
+		worker := NewWorker(workqueue, indexer, geodb)
 		worker.Start()
 	}
 	go func(channel syslog.LogPartsChannel) {
@@ -199,7 +186,7 @@ func main() {
 				select {
 				case workqueue <- m: // Put request in the channel unless it is full
 				default:
-					fmt.Println("Workqueue channel is full. Discarding request.")
+					log.Println("Workqueue channel is full. Discarding request.")
 				}
 			}
 		}
@@ -211,15 +198,15 @@ func main() {
 	go func() {
 		for _ = range sigchan {
 			// stop our server in a graceful manner
-			fmt.Println("\nStopping f5elastic")
+			log.Println("\nStopping f5elastic")
 			server.Kill()
 			close(workqueue)
 			wg.Wait()
-			fmt.Println("\nFinished.")
+			log.Println("\nFinished.")
 			done <- true
 		}
 	}()
-	fmt.Println("Starting f5elastic")
+	log.Println("Starting f5elastic")
 	server.Wait()
 	<-done
 }
