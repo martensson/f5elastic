@@ -6,7 +6,8 @@ It is today battle tested in a production environment handling loads of 500k req
 
 Features
 
-* Support for clusters of ES nodes, for distribution of indexing load. 
+* Works with Elasticsearch 1.x and 2.x
+* Support for clusters of ES nodes, for distribution of indexing load.
 * Health checks for each ES node is enabled by default.
 * Uses bulk indexing for better performance with large amount of requests.
 * GeoIP lookup of each request, adds long/lat, city, and country for each client.
