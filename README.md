@@ -4,6 +4,14 @@ A fast system tool for receiving high volumes of traffic logs sent from F5 LTM l
 
 It is today battle tested in a production environment handling loads of 500k req/min on a single host.
 
+Features
+
+* Support for clusters of ES nodes, for distribution of indexing load. 
+* Health checks for each ES node is enabled by default.
+* Uses bulk indexing for better performance with large amount of requests.
+* GeoIP lookup of each request, looks up long/lat, city, and country for each client.
+* more to come eventually....
+
 ## Getting started
 
 1. Enable the following irule on your virtual servers:
@@ -42,13 +50,15 @@ when HTTP_RESPONSE {
 
 2. `go get github.com/martensson/f5elastic`
 
-3. edit `f5elastic.toml` (check example in repo)
+3. download the latest Maxmind GeoLite2-City or GeoIP2-City db.
 
-4. apply the ES template inside the repo. (optional but recommended)
+4. edit `f5elastic.toml` (check example in repo)
 
-5. run `f5elastic -f /path/to/f5elastic.toml`
+5. apply the ES template inside the repo. (optional but recommended)
 
-6. Take a cup of coffee and make some nice dashboards inside Kibana :)
+6. run `f5elastic -f /path/to/f5elastic.toml`
+
+7. Take a cup of coffee and make some nice dashboards inside Kibana :)
 
 ## Extra recommendations
 
