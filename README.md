@@ -8,6 +8,7 @@ It is today battle tested in a production environment handling loads of 500k req
 
 1. Enable the following irule on your virtual servers:
 
+
 	when CLIENT_ACCEPTED {
 		set hsl [HSL::open -proto TCP -pool f5elastic_tcp]
 		set clientip [IP::remote_addr]
@@ -38,6 +39,7 @@ It is today battle tested in a production environment handling loads of 500k req
 		set virtual [virtual name]
 		HSL::send $hsl "<34>$syslogtime f5 request: $clientip || $method || $host || $uri || $status || $contentlength || $referer || $ua || $node || $pool || $virtual\n"
 	}
+
 
 2. `go get github.com/martensson/f5elastic`
 3. edit f5elastic.toml (check example in repo)
