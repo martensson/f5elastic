@@ -18,6 +18,7 @@ import (
 	"gopkg.in/olivere/elastic.v2"
 
 	"github.com/BurntSushi/toml"
+	"github.com/hashicorp/golang-lru"
 	"github.com/oschwald/geoip2-golang"
 )
 
@@ -52,17 +53,17 @@ type Config struct {
 }
 
 type Worker struct {
-	Work    chan string
-	Indexer *elastic.BulkService
-	Geodb   *geoip2.Reader
+	Work     chan string
+	Indexer  *elastic.BulkService
+	Esclient *elastic.Client
 }
 
-func NewWorker(work chan string, indexer *elastic.BulkService, geodb *geoip2.Reader) Worker {
-	// Create, and return the worker.
+func NewWorker(work chan string, c *elastic.Client) Worker {
+	indexer := c.Bulk()
 	return Worker{
-		Work:    work,
-		Indexer: indexer,
-		Geodb:   geodb}
+		Work:     work,
+		Indexer:  indexer,
+		Esclient: c}
 }
 
 func (w Worker) NewRequest(msg string) (Request, error) {
@@ -87,14 +88,23 @@ func (w Worker) NewRequest(msg string) (Request, error) {
 	request.Node = msgparts[8]
 	request.Pool = path.Base(msgparts[9])
 	request.Virtual = path.Base(msgparts[10])
-	ip := net.ParseIP(request.Client)
-	geo, err := w.Geodb.City(ip)
-	if err != nil {
-		log.Printf("Error parsing client ip %s: %s\n", request.Client, err)
+	// use LRU cache
+	var record *geoip2.City
+	if val, ok := geocache.Get(request.Client); ok {
+		record = val.(*geoip2.City)
 	} else {
-		request.City = geo.City.Names["en"]
-		request.Country = geo.Country.Names["en"]
-		request.Location = strconv.FormatFloat(geo.Location.Latitude, 'f', 6, 64) + "," + strconv.FormatFloat(geo.Location.Longitude, 'f', 6, 64)
+		ip := net.ParseIP(request.Client)
+		var err error
+		record, err = geodb.City(ip)
+		if err != nil {
+			log.Printf("Error parsing client ip %s: %s\n", request.Client, err)
+		}
+		geocache.Add(request.Client, record)
+	}
+	if record.Location.Longitude != 0 && record.Location.Latitude != 0 {
+		request.City = record.City.Names["en"]
+		request.Country = record.Country.Names["en"]
+		request.Location = strconv.FormatFloat(record.Location.Latitude, 'f', 6, 64) + "," + strconv.FormatFloat(record.Location.Longitude, 'f', 6, 64)
 	}
 	request.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	return request, nil
@@ -134,6 +144,8 @@ func (w Worker) Start() {
 }
 
 var wg sync.WaitGroup
+var geocache *lru.Cache
+var geodb *geoip2.Reader
 var config Config
 
 func main() {
@@ -159,24 +171,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// init elasticsearch connection
-	c, err := elastic.NewClient(elastic.SetURL(config.Nodes...), elastic.SetSniff(false), elastic.SetHealthcheckInterval(5*time.Second))
-	if err != nil {
-		log.Fatal(err)
-	}
-	// Load geoip2 database in memory
+	// init geoip2 database
 	// http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
-	geodb, err := geoip2.Open(config.Geoip)
+	geodb, err = geoip2.Open(config.Geoip)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer geodb.Close()
+	// init our lru cache of geodb
+	geocache, _ = lru.New(10000)
+	// init our elastic client
+	c, err := elastic.NewClient(elastic.SetURL(config.Nodes...), elastic.SetSniff(false), elastic.SetHealthcheckInterval(5*time.Second))
+	if err != nil {
+		log.Fatal(err)
+	}
 	// A buffered channel that we can send work requests on.
 	var workqueue = make(chan string, config.Buffer)
 	// lets start our desired workers.
 	for i := 0; i < config.Workers; i++ {
-		indexer := c.Bulk()
-		worker := NewWorker(workqueue, indexer, geodb)
+		worker := NewWorker(workqueue, c)
 		worker.Start()
 	}
 	go func(channel syslog.LogPartsChannel) {
@@ -198,11 +211,11 @@ func main() {
 	go func() {
 		for _ = range sigchan {
 			// stop our server in a graceful manner
-			log.Println("\nStopping f5elastic")
+			log.Println("Stopping f5elastic")
 			server.Kill()
 			close(workqueue)
 			wg.Wait()
-			log.Println("\nFinished.")
+			log.Println("Finished.")
 			done <- true
 		}
 	}()

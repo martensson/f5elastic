@@ -9,9 +9,9 @@ index = "f5-today"
 # Number of concurrent workers
 workers = 20
 # Bulk size for indexing.
-bulk = 250
+bulk = 2000
 # Buffer size. The amount of documents we keep in memory for our workers to handle.
-buffer = 10000
+buffer = 50000
 # Timeout in seconds to force index flush if bulk size is not met
 timeout = 5
 # Geoip2/GeoLite2 database
