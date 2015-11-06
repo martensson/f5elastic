@@ -48,7 +48,6 @@ when HTTP_RESPONSE {
     HSL::send $hsl "<34>$syslogtime f5 request: $clientip || $method || $host || $uri || $status || $contentlength || $referer || $ua || $node || $pool || $virtual\n"
 }
 ```
-
 2. `go get github.com/martensson/f5elastic`
 
 3. download the latest Maxmind GeoLite2-City or GeoIP2-City db.
