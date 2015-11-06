@@ -9,7 +9,7 @@ Features
 * Support for clusters of ES nodes, for distribution of indexing load. 
 * Health checks for each ES node is enabled by default.
 * Uses bulk indexing for better performance with large amount of requests.
-* GeoIP lookup of each request, looks up long/lat, city, and country for each client.
+* GeoIP lookup of each request, adds long/lat, city, and country for each client.
 * more to come eventually....
 
 ## Getting started
