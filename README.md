@@ -44,7 +44,7 @@ when HTTP_RESPONSE {
 
 3. edit `f5elastic.toml` (check example in repo)
 
-4. Feel free to apply the ES template inside the repo.
+4. apply the ES template inside the repo. (optional but recommended)
 
 5. run `f5elastic -f /path/to/f5elastic.toml`
 
