@@ -5,7 +5,7 @@
 	],
 	"Arch": "amd64",
 	"Os": "linux darwin windows freebsd",
-	"PackageVersion": "1.0.0",
+	"PackageVersion": "1.0.1",
 	"TaskSettings": {
 		"publish-github": {
 			"owner": "martensson",
