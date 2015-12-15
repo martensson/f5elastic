@@ -48,15 +48,15 @@ when HTTP_RESPONSE {
     HSL::send $hsl "<34>$syslogtime f5 request: $clientip || $method || $host || $uri || $status || $contentlength || $referer || $ua || $node || $pool || $virtual\n"
 }
 ```
-2. `go get github.com/martensson/f5elastic`
+2. Download compiled binary from `https://github.com/martensson/f5elastic/releases` or `go get github.com/martensson/f5elastic`
 
-3. download the latest Maxmind GeoLite2-City or GeoIP2-City db.
+3. Download the latest Maxmind GeoLite2-City or GeoIP2-City db.
 
-4. edit `f5elastic.toml` (check example in repo)
+4. Edit `f5elastic.toml` (check example in repo)
 
-5. apply the ES template inside the repo. (optional but recommended)
+5. Apply the ES template inside the repo. (optional but recommended)
 
-6. run `f5elastic -f /path/to/f5elastic.toml`
+6. Run `f5elastic -f /path/to/f5elastic.toml`
 
 7. Take a cup of coffee and make some nice dashboards inside Kibana :)
 
