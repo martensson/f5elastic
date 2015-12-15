@@ -14,12 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/mcuadros/go-syslog.v2"
-	"gopkg.in/olivere/elastic.v2"
-
 	"github.com/BurntSushi/toml"
 	"github.com/hashicorp/golang-lru"
 	"github.com/oschwald/geoip2-golang"
+	"gopkg.in/mcuadros/go-syslog.v2"
+	"gopkg.in/olivere/elastic.v3"
 )
 
 type Request struct {
@@ -181,7 +180,11 @@ func main() {
 	// init our lru cache of geodb
 	geocache, _ = lru.New(10000)
 	// init our elastic client
-	c, err := elastic.NewClient(elastic.SetURL(config.Nodes...), elastic.SetSniff(false), elastic.SetHealthcheckInterval(5*time.Second))
+	c, err := elastic.NewClient(
+		elastic.SetURL(config.Nodes...),
+		elastic.SetSniff(false),
+		elastic.SetHealthcheckInterval(10*time.Second),
+		elastic.SetMaxRetries(5))
 	if err != nil {
 		log.Fatal(err)
 	}
