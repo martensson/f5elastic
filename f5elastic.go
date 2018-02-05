@@ -69,7 +69,7 @@ func (w Worker) NewRequest(msg string) (Request, error) {
 	msgparts := strings.Split(msg, " || ")
 	var request Request
 	if len(msgparts) != 11 {
-		err := errors.New("Error parsing message:\n" + msg)
+		err := errors.New("Error parsing raw message: " + msg)
 		return request, err
 	}
 	request.Client = msgparts[0]
@@ -78,6 +78,11 @@ func (w Worker) NewRequest(msg string) (Request, error) {
 	request.Uri = msgparts[3]
 	if s, err := strconv.Atoi(msgparts[4]); err == nil {
 		request.Status = s
+	}
+	// requests without valid status code will be ignored. Happens when we use http::retry.
+	if request.Status < 100 || request.Status > 511 {
+		err := errors.New("Error invalid status code: " + strconv.Itoa(request.Status) + " : " + request.Host + request.Uri)
+		return request, err
 	}
 	if s, err := strconv.Atoi(msgparts[5]); err == nil {
 		request.Contentlength = s
