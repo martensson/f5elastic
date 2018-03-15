@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"io/ioutil"
@@ -49,6 +51,7 @@ type Config struct {
 	Buffer  int
 	Timeout int
 	Geoip   string
+	Salt    string
 }
 
 type Worker struct {
@@ -111,6 +114,18 @@ func (w Worker) NewRequest(msg string) (Request, error) {
 		request.Location = strconv.FormatFloat(record.Location.Latitude, 'f', 6, 64) + "," + strconv.FormatFloat(record.Location.Longitude, 'f', 6, 64)
 	}
 	request.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
+	if config.Salt != "" {
+		// hash client ip with secret salt.
+		if val, ok := hashcache.Get(request.Client); ok {
+			request.Client = val.(string)
+		} else {
+			h := sha256.New()
+			h.Write([]byte(request.Client + config.Salt))
+			hexhash := hex.EncodeToString(h.Sum(nil))[0:16]
+			hashcache.Add(request.Client, hexhash)
+			request.Client = hexhash
+		}
+	}
 	return request, nil
 }
 
@@ -149,6 +164,7 @@ func (w Worker) Start() {
 
 var wg sync.WaitGroup
 var geocache *lru.Cache
+var hashcache *lru.Cache
 var geodb *geoip2.Reader
 var config Config
 
@@ -183,7 +199,9 @@ func main() {
 	}
 	defer geodb.Close()
 	// init our lru cache of geodb
-	geocache, _ = lru.New(10000)
+	geocache, _ = lru.New(100000)
+	// init our lru cache of sha256 hashes
+	hashcache, _ = lru.New(100000)
 	// init our elastic client
 	c, err := elastic.NewClient(
 		elastic.SetURL(config.Nodes...),

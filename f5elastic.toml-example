@@ -16,3 +16,5 @@ buffer = 50000
 timeout = 5
 # Geoip2/GeoLite2 database
 geoip = "GeoLite2-City.mmdb"
+# generate sha256 hash to hide client ip (disabled if empty)
+salt = ""
