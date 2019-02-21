@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -18,9 +19,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/hashicorp/golang-lru"
+	"github.com/olivere/elastic"
 	"github.com/oschwald/geoip2-golang"
 	"gopkg.in/mcuadros/go-syslog.v2"
-	"gopkg.in/olivere/elastic.v3"
 )
 
 type Request struct {
@@ -56,12 +57,20 @@ type Config struct {
 
 type Worker struct {
 	Work     chan string
-	Indexer  *elastic.BulkService
+	Indexer  *elastic.BulkProcessor
 	Esclient *elastic.Client
 }
 
 func NewWorker(work chan string, c *elastic.Client) Worker {
-	indexer := c.Bulk()
+	// Setup a bulk processor
+	indexer, err := c.BulkProcessor().
+		Workers(1).
+		BulkActions(config.Bulk).                                   // commit if # requests
+		FlushInterval(time.Duration(config.Timeout) * time.Second). // commit at Timeout
+		Do(context.Background())
+	if err != nil {
+		log.Fatalln(err)
+	}
 	return Worker{
 		Work:     work,
 		Indexer:  indexer,
@@ -133,15 +142,11 @@ func (w Worker) Start() {
 	go func() {
 		wg.Add(1)
 		defer wg.Done()
-		timer := time.After(time.Second * time.Duration(config.Timeout))
 		for {
 			select {
-			case <-timer:
-				w.Indexer.Do()
-				timer = time.After(time.Second * time.Duration(config.Timeout))
 			case m, ok := <-w.Work:
 				if !ok {
-					w.Indexer.Do()
+					w.Indexer.Flush()
 					return
 				}
 				request, err := w.NewRequest(m)
@@ -149,14 +154,8 @@ func (w Worker) Start() {
 					log.Println(err)
 					continue
 				}
-				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index).Type("request").Id("").Doc(request)
-				w.Indexer = w.Indexer.Add(reqIndex)
-				// should be enough for now, but we can increase load by creating a group of workers
-				if w.Indexer.NumberOfActions() >= config.Bulk {
-					w.Indexer.Do()
-					// reset timer
-					timer = time.After(time.Second * time.Duration(config.Timeout))
-				}
+				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index).Type("_doc").Id("").Doc(request)
+				w.Indexer.Add(reqIndex)
 			}
 		}
 	}()
