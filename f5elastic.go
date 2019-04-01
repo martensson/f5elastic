@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/olivere/elastic"
 	"github.com/oschwald/geoip2-golang"
 	"gopkg.in/mcuadros/go-syslog.v2"
@@ -43,16 +43,17 @@ type Request struct {
 }
 
 type Config struct {
-	Address string
-	Port    string
-	Nodes   []string
-	Index   string
-	Workers int
-	Bulk    int
-	Buffer  int
-	Timeout int
-	Geoip   string
-	Salt    string
+	Address    string
+	Port       string
+	Nodes      []string
+	Index      string
+	Workers    int
+	Bulk       int
+	Buffer     int
+	Timeout    int
+	Geoip      string
+	Salt       string
+	CidrIgnore []string
 }
 
 type Worker struct {
@@ -124,15 +125,25 @@ func (w Worker) NewRequest(msg string) (Request, error) {
 	}
 	request.Timestamp = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	if config.Salt != "" {
-		// hash client ip with secret salt.
-		if val, ok := hashcache.Get(request.Client); ok {
-			request.Client = val.(string)
-		} else {
-			h := sha256.New()
-			h.Write([]byte(request.Client + config.Salt))
-			hexhash := hex.EncodeToString(h.Sum(nil))[0:16]
-			hashcache.Add(request.Client, hexhash)
-			request.Client = hexhash
+		ip := net.ParseIP(request.Client)
+		var found bool
+		for _, cidr := range config.CidrIgnore {
+			_, ipnet, _ := net.ParseCIDR(cidr)
+			if ipnet.Contains(ip) {
+				found = true
+			}
+		}
+		if !found {
+			// hash client ip with secret salt.
+			if val, ok := hashcache.Get(request.Client); ok {
+				request.Client = val.(string)
+			} else {
+				h := sha256.New()
+				h.Write([]byte(request.Client + config.Salt))
+				hexhash := hex.EncodeToString(h.Sum(nil))[0:16]
+				hashcache.Add(request.Client, hexhash)
+				request.Client = hexhash
+			}
 		}
 	}
 	return request, nil
