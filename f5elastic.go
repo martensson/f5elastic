@@ -19,7 +19,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/olivere/elastic"
+	"github.com/olivere/elastic/v7"
 	"github.com/oschwald/geoip2-golang"
 	"gopkg.in/mcuadros/go-syslog.v2"
 )
