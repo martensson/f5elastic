@@ -1,6 +1,8 @@
 GeoLite2-City.mmdb
 GeoIP2-City.mmdb
 f5elastic
+k8s.yaml
+service.yaml
 f5elastic.toml
 .goxc.local.json
 dist

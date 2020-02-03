@@ -4,8 +4,8 @@ address = "0.0.0.0"
 port = "514"
 # Nodes in your cluster
 nodes = [ "http://test01:9200", "http://test02:9200", "http://test03:9200" ]
-# Index name
-index = "f5-today"
+# Index name (date postfix is added: "-YYYY-MM-DD")
+index = "f5"
 # Number of concurrent workers
 workers = 20
 # Bulk size for indexing.
