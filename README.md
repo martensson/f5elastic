@@ -6,7 +6,7 @@ It is today battle tested in a production environment handling loads of 500k req
 
 Features
 
-* Works with Elasticsearch 6.x
+* Works with Elasticsearch 7.x
 * Support for clusters of ES nodes, for distribution of indexing load.
 * Health checks for each ES node is enabled by default.
 * Uses bulk indexing for better performance with large amount of requests.
