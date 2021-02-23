@@ -39,7 +39,7 @@ type Request struct {
 	City          string `json:"city"`
 	Country       string `json:"country"`
 	Location      string `json:"location"`
-	Timestamp     string `json:"timestamp"`
+	Timestamp     string `json:"@timestamp"`
 }
 
 type Config struct {
@@ -157,7 +157,10 @@ func (w Worker) Start() {
 			select {
 			case m, ok := <-w.Work:
 				if !ok {
-					w.Indexer.Flush()
+					err := w.Indexer.Flush()
+					if err != nil {
+						log.Println(err)
+					}
 					return
 				}
 				request, err := w.NewRequest(m)
@@ -165,7 +168,11 @@ func (w Worker) Start() {
 					log.Println(err)
 					continue
 				}
-				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index).Type("_doc").Id("").Doc(request)
+				reqIndex := elastic.NewBulkIndexRequest().
+					Index(config.Index).
+					Id("").
+					Doc(request).
+					OpType("create")
 				w.Indexer.Add(reqIndex)
 			}
 		}
@@ -217,7 +224,8 @@ func main() {
 		elastic.SetURL(config.Nodes...),
 		elastic.SetSniff(false),
 		elastic.SetHealthcheckInterval(10*time.Second),
-		elastic.SetMaxRetries(5))
+		elastic.SetMaxRetries(5),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

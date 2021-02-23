@@ -41,7 +41,7 @@
                 "status": {
                     "type": "short"
                 },
-                "timestamp": {
+                "@timestamp": {
                     "type": "date"
                 },
                 "uri": {
