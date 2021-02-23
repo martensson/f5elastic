@@ -165,7 +165,7 @@ func (w Worker) Start() {
 					log.Println(err)
 					continue
 				}
-				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index + time.Now().Format("-2006-01-02")).Type("_doc").Id("").Doc(request)
+				reqIndex := elastic.NewBulkIndexRequest().Index(config.Index).Type("_doc").Id("").Doc(request)
 				w.Indexer.Add(reqIndex)
 			}
 		}

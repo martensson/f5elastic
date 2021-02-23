@@ -1,6 +1,12 @@
 {
-    "mappings": {
-        "_doc": {
+	"index_patterns": ["f5-datastream", "f5int-datastream"],
+    "data_stream": { },
+    "priority": 100,
+    "template": {
+        "settings": {
+            "index.lifecycle.name": "f5elastic"
+        },
+        "mappings": {
             "properties": {
                 "city": {
                     "type": "keyword"
@@ -49,10 +55,5 @@
                 }
             }
         }
-    },
-    "settings": {
-        "number_of_replicas": "1",
-        "number_of_shards": "5"
-    },
-	"index_patterns": ["f5*"]
+    }
 }
