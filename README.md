@@ -27,12 +27,8 @@ Features
 
 4. Edit `f5elastic.toml` (check example in repo)
 
-5. Apply the ES template inside the repo. (optional but recommended)
+5. Apply the ES template inside the repo. (optional but recommended). Create a corresponding ILM policy named `f5elastic` with the retention rules of your liking.
 
 6. Run `f5elastic -f /path/to/f5elastic.toml`
 
 7. Take a cup of coffee and make some nice dashboards inside Kibana :)
-
-## Extra recommendations
-
-Use [curator](https://www.elastic.co/guide/en/elasticsearch/client/curator/current/index.html) to create and rotate daily indexes.
